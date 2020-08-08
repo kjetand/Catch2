@@ -1,10 +1,8 @@
 #include <catch2/internal/catch_clara.hpp>
-
 #include <catch2/internal/catch_console_width.hpp>
-#include <catch2/internal/catch_textflow.hpp>
 #include <catch2/internal/catch_platform.hpp>
-
-#include <algorithm>
+#include <catch2/internal/catch_string_manip.hpp>
+#include <catch2/internal/catch_textflow.hpp>
 
 namespace {
     bool isOptPrefix( char c ) {
@@ -38,11 +36,12 @@ namespace Catch {
                 m_args( args.begin() + 1, args.end() ) {}
 
             void TokenStream::loadBuffer() {
-                m_tokenBuffer.resize( 0 );
+                m_tokenBuffer.clear();
 
                 // Skip any empty strings
-                while ( it != itEnd && it->empty() )
+                while ( it != itEnd && it->empty() ) {
                     ++it;
+                }
 
                 if ( it != itEnd ) {
                     auto const& next = *it;
@@ -75,6 +74,14 @@ namespace Catch {
                 }
             }
 
+            TokenStream::TokenStream( Args const& args ):
+                TokenStream( args.m_args.begin(), args.m_args.end() ) {}
+
+            TokenStream::TokenStream( Iterator it, Iterator itEnd ):
+                it( it ), itEnd( itEnd ) {
+                loadBuffer();
+            }
+
             TokenStream& TokenStream::operator++() {
                 if ( m_tokenBuffer.size() >= 2 ) {
                     m_tokenBuffer.erase( m_tokenBuffer.begin() );
@@ -94,24 +101,19 @@ namespace Catch {
 
             ParserResult convertInto( std::string const& source,
                                       bool& target ) {
-                std::string srcLC = source;
-                std::transform( srcLC.begin(),
-                                srcLC.end(),
-                                srcLC.begin(),
-                                []( unsigned char c ) {
-                                    return static_cast<char>(
-                                        std::tolower( c ) );
-                                } );
+                std::string srcLC = toLower( source );
+
                 if ( srcLC == "y" || srcLC == "1" || srcLC == "true" ||
-                     srcLC == "yes" || srcLC == "on" )
+                     srcLC == "yes" || srcLC == "on" ) {
                     target = true;
-                else if ( srcLC == "n" || srcLC == "0" || srcLC == "false" ||
-                          srcLC == "no" || srcLC == "off" )
+                } else if ( srcLC == "n" || srcLC == "0" || srcLC == "false" ||
+                            srcLC == "no" || srcLC == "off" ) {
                     target = false;
-                else
+                } else {
                     return ParserResult::runtimeError(
                         "Expected a boolean value but did not recognise: '" +
                         source + "'" );
+                }
                 return ParserResult::ok( ParseResultType::Matched );
             }
 
@@ -275,41 +277,46 @@ namespace Catch {
                     .optional();
             }
 
-            Parser& Parser::operator|=(Parser const& other) {
-                m_options.insert(m_options.end(), other.m_options.begin(), other.m_options.end());
-                m_args.insert(m_args.end(), other.m_args.begin(), other.m_args.end());
+            Parser& Parser::operator|=( Parser const& other ) {
+                m_options.insert( m_options.end(),
+                                  other.m_options.begin(),
+                                  other.m_options.end() );
+                m_args.insert(
+                    m_args.end(), other.m_args.begin(), other.m_args.end() );
                 return *this;
             }
 
             std::vector<HelpColumns> Parser::getHelpColumns() const {
                 std::vector<HelpColumns> cols;
-                for (auto const& o : m_options) {
+                for ( auto const& o : m_options ) {
                     auto childCols = o.getHelpColumns();
-                    cols.insert(cols.end(), childCols.begin(), childCols.end());
+                    cols.insert(
+                        cols.end(), childCols.begin(), childCols.end() );
                 }
                 return cols;
             }
 
-            void Parser::writeToStream(std::ostream& os) const {
-                if (!m_exeName.name().empty()) {
-                    os << "usage:\n" << "  " << m_exeName.name() << ' ';
+            void Parser::writeToStream( std::ostream& os ) const {
+                if ( !m_exeName.name().empty() ) {
+                    os << "usage:\n"
+                       << "  " << m_exeName.name() << ' ';
                     bool required = true, first = true;
-                    for (auto const& arg : m_args) {
-                        if (first)
+                    for ( auto const& arg : m_args ) {
+                        if ( first )
                             first = false;
                         else
                             os << ' ';
-                        if (arg.isOptional() && required) {
+                        if ( arg.isOptional() && required ) {
                             os << '[';
                             required = false;
                         }
                         os << '<' << arg.hint() << '>';
-                        if (arg.cardinality() == 0)
+                        if ( arg.cardinality() == 0 )
                             os << " ... ";
                     }
-                    if (!required)
+                    if ( !required )
                         os << ']';
-                    if (!m_options.empty())
+                    if ( !m_options.empty() )
                         os << " options";
                     os << "\n\nwhere options are:\n";
                 }
@@ -317,64 +324,70 @@ namespace Catch {
                 auto rows = getHelpColumns();
                 size_t consoleWidth = CATCH_CONFIG_CONSOLE_WIDTH;
                 size_t optWidth = 0;
-                for (auto const& cols : rows)
-                    optWidth = (std::max)(optWidth, cols.left.size() + 2);
+                for ( auto const& cols : rows )
+                    optWidth = ( std::max )( optWidth, cols.left.size() + 2 );
 
-                optWidth = (std::min)(optWidth, consoleWidth / 2);
+                optWidth = ( std::min )( optWidth, consoleWidth / 2 );
 
-                for (auto const& cols : rows) {
-                    auto row =
-                        TextFlow::Column(cols.left).width(optWidth).indent(2) +
-                        TextFlow::Spacer(4) +
-                        TextFlow::Column(cols.right).width(consoleWidth - 7 - optWidth);
+                for ( auto const& cols : rows ) {
+                    auto row = TextFlow::Column( cols.left )
+                                   .width( optWidth )
+                                   .indent( 2 ) +
+                               TextFlow::Spacer( 4 ) +
+                               TextFlow::Column( cols.right )
+                                   .width( consoleWidth - 7 - optWidth );
                     os << row << '\n';
                 }
             }
 
             Result Parser::validate() const {
-                for (auto const& opt : m_options) {
+                for ( auto const& opt : m_options ) {
                     auto result = opt.validate();
-                    if (!result)
+                    if ( !result )
                         return result;
                 }
-                for (auto const& arg : m_args) {
+                for ( auto const& arg : m_args ) {
                     auto result = arg.validate();
-                    if (!result)
+                    if ( !result )
                         return result;
                 }
                 return Result::ok();
             }
 
-            InternalParseResult Parser::parse(std::string const& exeName, TokenStream const& tokens) const {
+            InternalParseResult
+            Parser::parse( std::string const& exeName,
+                           TokenStream const& tokens ) const {
 
                 struct ParserInfo {
                     ParserBase const* parser = nullptr;
                     size_t count = 0;
                 };
-                const size_t totalParsers = m_options.size() + m_args.size();
-                assert(totalParsers < 512);
-                // ParserInfo parseInfos[totalParsers]; // <-- this is what we really want to do
-                ParserInfo parseInfos[512];
-
-                {
-                    size_t i = 0;
-                    for (auto const& opt : m_options) parseInfos[i++].parser = &opt;
-                    for (auto const& arg : m_args) parseInfos[i++].parser = &arg;
+                std::vector<ParserInfo> parseInfos;
+                parseInfos.reserve( m_options.size() + m_args.size() );
+                for ( auto const& opt : m_options ) {
+                    parseInfos.push_back( { &opt, 0 } );
+                }
+                for ( auto const& arg : m_args ) {
+                    parseInfos.push_back( { &arg, 0 } );
                 }
 
-                m_exeName.set(exeName);
+                m_exeName.set( exeName );
 
-                auto result = InternalParseResult::ok(ParseState(ParseResultType::NoMatch, tokens));
-                while (result.value().remainingTokens()) {
+                auto result = InternalParseResult::ok(
+                    ParseState( ParseResultType::NoMatch, tokens ) );
+                while ( result.value().remainingTokens() ) {
                     bool tokenParsed = false;
 
-                    for (size_t i = 0; i < totalParsers; ++i) {
-                        auto& parseInfo = parseInfos[i];
-                        if (parseInfo.parser->cardinality() == 0 || parseInfo.count < parseInfo.parser->cardinality()) {
-                            result = parseInfo.parser->parse(exeName, result.value().remainingTokens());
-                            if (!result)
+                    for ( auto& parseInfo : parseInfos ) {
+                        if ( parseInfo.parser->cardinality() == 0 ||
+                             parseInfo.count <
+                                 parseInfo.parser->cardinality() ) {
+                            result = parseInfo.parser->parse(
+                                exeName, result.value().remainingTokens() );
+                            if ( !result )
                                 return result;
-                            if (result.value().type() != ParseResultType::NoMatch) {
+                            if ( result.value().type() !=
+                                 ParseResultType::NoMatch ) {
                                 tokenParsed = true;
                                 ++parseInfo.count;
                                 break;
@@ -382,19 +395,31 @@ namespace Catch {
                         }
                     }
 
-                    if (result.value().type() == ParseResultType::ShortCircuitAll)
+                    if ( result.value().type() ==
+                         ParseResultType::ShortCircuitAll )
                         return result;
-                    if (!tokenParsed)
-                        return InternalParseResult::runtimeError("Unrecognised token: " + result.value().remainingTokens()->token);
+                    if ( !tokenParsed )
+                        return InternalParseResult::runtimeError(
+                            "Unrecognised token: " +
+                            result.value().remainingTokens()->token );
                 }
                 // !TBD Check missing required options
                 return result;
             }
 
-            InternalParseResult ParserBase::parse(Args const& args) const {
-                return parse(args.exeName(), TokenStream(args));
+            InternalParseResult ParserBase::parse( Args const& args ) const {
+                return parse( args.exeName(), TokenStream( args ) );
             }
 
-} // namespace detail
+            ParseState::ParseState( ParseResultType type,
+                                    TokenStream const& remainingTokens ):
+                m_type( type ), m_remainingTokens( remainingTokens ) {}
+
+            ParserResult BoundFlagRef::setFlag( bool flag ) {
+                m_ref = flag;
+                return ParserResult::ok( ParseResultType::Matched );
+            }
+
+        } // namespace detail
     }     // namespace clara
 } // namespace Catch
