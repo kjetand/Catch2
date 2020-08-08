@@ -267,16 +267,6 @@ namespace Catch {
                 return ParserRefImpl::validate();
             }
 
-            Help::Help( bool& showHelpFlag ):
-                Opt( [&]( bool flag ) {
-                    showHelpFlag = flag;
-                    return ParserResult::ok( ParseResultType::ShortCircuitAll );
-                } ) {
-                static_cast<Opt&> ( *this )(
-                    "display usage information" )["-?"]["-h"]["--help"]
-                    .optional();
-            }
-
             Parser& Parser::operator|=( Parser const& other ) {
                 m_options.insert( m_options.end(),
                                   other.m_options.begin(),
@@ -421,5 +411,16 @@ namespace Catch {
             }
 
         } // namespace detail
+
+        Help::Help(bool& showHelpFlag) :
+            Opt([&](bool flag) {
+            showHelpFlag = flag;
+            return ParserResult::ok(ParseResultType::ShortCircuitAll);
+                }) {
+            static_cast<Opt&> (*this)(
+                "display usage information")["-?"]["-h"]["--help"]
+                .optional();
+        }
+
     }     // namespace clara
 } // namespace Catch

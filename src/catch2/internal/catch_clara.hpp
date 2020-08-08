@@ -571,10 +571,6 @@ namespace Catch {
                 Result validate() const override;
             };
 
-            struct Help : Opt {
-                Help( bool& showHelpFlag );
-            };
-
             struct Parser : ParserBase {
 
                 mutable ExeName m_exeName;
@@ -645,7 +641,9 @@ namespace Catch {
         using Detail::ExeName;
 
         // Convenience wrapper for option parser that specifies the help option
-        using Detail::Help;
+        struct Help : Opt {
+            Help(bool& showHelpFlag);
+        };
 
         // enum of result types from a parse
         using Detail::ParseResultType;
