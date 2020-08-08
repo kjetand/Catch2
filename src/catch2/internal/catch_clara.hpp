@@ -416,9 +416,6 @@ namespace Catch {
             public:
                 template<typename T>
                 auto operator|(T const& other) const->Parser;
-
-                template<typename T>
-                auto operator+(T const& other) const->Parser;
             };
 
             // Common code and state for Args and Opts
@@ -568,12 +565,6 @@ namespace Catch {
                 auto operator|(T const& other) const -> Parser {
                     return Parser(*this) |= other;
                 }
-
-                // Forward deprecated interface with '+' instead of '|'
-                template<typename T>
-                auto operator+=(T const& other) -> Parser& { return operator|=(other); }
-                template<typename T>
-                auto operator+(T const& other) const -> Parser { return operator|(other); }
 
                 std::vector<HelpColumns> getHelpColumns() const;
 
