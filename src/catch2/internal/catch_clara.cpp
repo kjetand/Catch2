@@ -25,8 +25,8 @@ namespace {
 } // namespace
 
 namespace Catch {
-    namespace clara {
-        namespace detail {
+    namespace Clara {
+        namespace Detail {
 
             Args::Args( int argc, char const* const* argv ):
                 m_exeName( argv[0] ), m_args( argv + 1, argv + argc ) {}
@@ -158,7 +158,7 @@ namespace Catch {
 
                 assert( !m_ref->isFlag() );
                 auto valueRef =
-                    static_cast<detail::BoundValueRefBase*>( m_ref.get() );
+                    static_cast<Detail::BoundValueRefBase*>( m_ref.get() );
 
                 auto result = valueRef->setValue( remainingTokens->token );
                 if ( !result )
@@ -208,7 +208,7 @@ namespace Catch {
                     if ( isMatch( token.token ) ) {
                         if ( m_ref->isFlag() ) {
                             auto flagRef =
-                                static_cast<detail::BoundFlagRefBase*>(
+                                static_cast<Detail::BoundFlagRefBase*>(
                                     m_ref.get() );
                             auto result = flagRef->setFlag( true );
                             if ( !result )
@@ -219,7 +219,7 @@ namespace Catch {
                                     result.value(), remainingTokens ) );
                         } else {
                             auto valueRef =
-                                static_cast<detail::BoundValueRefBase*>(
+                                static_cast<Detail::BoundValueRefBase*>(
                                     m_ref.get() );
                             ++remainingTokens;
                             if ( !remainingTokens )

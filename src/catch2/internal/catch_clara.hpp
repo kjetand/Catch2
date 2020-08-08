@@ -39,8 +39,8 @@
 #include <vector>
 
 namespace Catch {
-    namespace clara {
-        namespace detail {
+    namespace Clara {
+        namespace Detail {
 
             // Traits for extracting arg and return type of lambdas (for single
             // argument lambdas)
@@ -630,28 +630,28 @@ namespace Catch {
         } // namespace detail
 
         // A Combined parser
-        using detail::Parser;
+        using Detail::Parser;
 
         // A parser for options
-        using detail::Opt;
+        using Detail::Opt;
 
         // A parser for arguments
-        using detail::Arg;
+        using Detail::Arg;
 
         // Wrapper for argc, argv from main()
-        using detail::Args;
+        using Detail::Args;
 
         // Specifies the name of the executable
-        using detail::ExeName;
+        using Detail::ExeName;
 
         // Convenience wrapper for option parser that specifies the help option
-        using detail::Help;
+        using Detail::Help;
 
         // enum of result types from a parse
-        using detail::ParseResultType;
+        using Detail::ParseResultType;
 
         // Result type for parser operation
-        using detail::ParserResult;
+        using Detail::ParserResult;
 
     } // namespace clara
 } // namespace Catch
