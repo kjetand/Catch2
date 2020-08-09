@@ -524,61 +524,64 @@ namespace Catch {
                 ParserResult set( std::string const& newName );
             };
 
-            class Arg : public ParserRefImpl<Arg> {
-            public:
-                using ParserRefImpl::ParserRefImpl;
-
-                InternalParseResult
-                parse( std::string const&,
-                       TokenStream const& tokens ) const override;
-            };
-
-            class Opt : public ParserRefImpl<Opt> {
-            protected:
-                std::vector<std::string> m_optNames;
-
-            public:
-                template <typename LambdaT>
-                explicit Opt( LambdaT const& ref ):
-                    ParserRefImpl(
-                        std::make_shared<BoundFlagLambda<LambdaT>>( ref ) ) {}
-
-                explicit Opt( bool& ref );
-
-                template <typename LambdaT>
-                Opt( LambdaT const& ref, std::string const& hint ):
-                    ParserRefImpl( ref, hint ) {}
-
-                template <typename T>
-                Opt( T& ref, std::string const& hint ):
-                    ParserRefImpl( ref, hint ) {}
-
-                auto operator[]( std::string const& optName ) -> Opt& {
-                    m_optNames.push_back( optName );
-                    return *this;
-                }
-
-                std::vector<HelpColumns> getHelpColumns() const;
-
-                bool isMatch( std::string const& optToken ) const;
-
-                using ParserBase::parse;
-
-                InternalParseResult
-                parse( std::string const&,
-                       TokenStream const& tokens ) const override;
-
-                Result validate() const override;
-            };
-
         } // namespace detail
+
+
+        // A parser for arguments
+        class Arg : public Detail::ParserRefImpl<Arg> {
+        public:
+            using ParserRefImpl::ParserRefImpl;
+
+            Detail::InternalParseResult
+                parse(std::string const&,
+                      Detail::TokenStream const& tokens) const override;
+        };
+
+        // A parser for options
+        class Opt : public Detail::ParserRefImpl<Opt> {
+        protected:
+            std::vector<std::string> m_optNames;
+
+        public:
+            template <typename LambdaT>
+            explicit Opt(LambdaT const& ref) :
+                ParserRefImpl(
+                    std::make_shared<Detail::BoundFlagLambda<LambdaT>>(ref)) {}
+
+            explicit Opt(bool& ref);
+
+            template <typename LambdaT>
+            Opt(LambdaT const& ref, std::string const& hint) :
+                ParserRefImpl(ref, hint) {}
+
+            template <typename T>
+            Opt(T& ref, std::string const& hint) :
+                ParserRefImpl(ref, hint) {}
+
+            auto operator[](std::string const& optName) -> Opt& {
+                m_optNames.push_back(optName);
+                return *this;
+            }
+
+            std::vector<Detail::HelpColumns> getHelpColumns() const;
+
+            bool isMatch(std::string const& optToken) const;
+
+            using ParserBase::parse;
+
+            Detail::InternalParseResult
+                parse(std::string const&,
+                      Detail::TokenStream const& tokens) const override;
+
+            Detail::Result validate() const override;
+        };
 
 
         // A Combined parser
         class Parser : Detail::ParserBase {
             mutable Detail::ExeName m_exeName;
-            std::vector<Detail::Opt> m_options;
-            std::vector<Detail::Arg> m_args;
+            std::vector<Opt> m_options;
+            std::vector<Arg> m_args;
 
         public:
 
@@ -587,12 +590,12 @@ namespace Catch {
                 return *this;
             }
 
-            auto operator|=(Detail::Arg const& arg) -> Parser& {
+            auto operator|=(Arg const& arg) -> Parser& {
                 m_args.push_back(arg);
                 return *this;
             }
 
-            auto operator|=(Detail::Opt const& opt) -> Parser& {
+            auto operator|=(Opt const& opt) -> Parser& {
                 m_options.push_back(opt);
                 return *this;
             }
@@ -621,12 +624,6 @@ namespace Catch {
                 parse(std::string const& exeName,
                       Detail::TokenStream const& tokens) const override;
         };
-
-        // A parser for options
-        using Detail::Opt;
-
-        // A parser for arguments
-        using Detail::Arg;
 
         // Wrapper for argc, argv from main()
         using Detail::Args;
