@@ -4,6 +4,8 @@
 #include <catch2/internal/catch_string_manip.hpp>
 #include <catch2/internal/catch_textflow.hpp>
 
+#include <algorithm>
+
 namespace {
     bool isOptPrefix( char c ) {
         return c == '-'
@@ -267,136 +269,6 @@ namespace Catch {
                 return ParserRefImpl::validate();
             }
 
-            Parser& Parser::operator|=( Parser const& other ) {
-                m_options.insert( m_options.end(),
-                                  other.m_options.begin(),
-                                  other.m_options.end() );
-                m_args.insert(
-                    m_args.end(), other.m_args.begin(), other.m_args.end() );
-                return *this;
-            }
-
-            std::vector<HelpColumns> Parser::getHelpColumns() const {
-                std::vector<HelpColumns> cols;
-                for ( auto const& o : m_options ) {
-                    auto childCols = o.getHelpColumns();
-                    cols.insert(
-                        cols.end(), childCols.begin(), childCols.end() );
-                }
-                return cols;
-            }
-
-            void Parser::writeToStream( std::ostream& os ) const {
-                if ( !m_exeName.name().empty() ) {
-                    os << "usage:\n"
-                       << "  " << m_exeName.name() << ' ';
-                    bool required = true, first = true;
-                    for ( auto const& arg : m_args ) {
-                        if ( first )
-                            first = false;
-                        else
-                            os << ' ';
-                        if ( arg.isOptional() && required ) {
-                            os << '[';
-                            required = false;
-                        }
-                        os << '<' << arg.hint() << '>';
-                        if ( arg.cardinality() == 0 )
-                            os << " ... ";
-                    }
-                    if ( !required )
-                        os << ']';
-                    if ( !m_options.empty() )
-                        os << " options";
-                    os << "\n\nwhere options are:\n";
-                }
-
-                auto rows = getHelpColumns();
-                size_t consoleWidth = CATCH_CONFIG_CONSOLE_WIDTH;
-                size_t optWidth = 0;
-                for ( auto const& cols : rows )
-                    optWidth = ( std::max )( optWidth, cols.left.size() + 2 );
-
-                optWidth = ( std::min )( optWidth, consoleWidth / 2 );
-
-                for ( auto const& cols : rows ) {
-                    auto row = TextFlow::Column( cols.left )
-                                   .width( optWidth )
-                                   .indent( 2 ) +
-                               TextFlow::Spacer( 4 ) +
-                               TextFlow::Column( cols.right )
-                                   .width( consoleWidth - 7 - optWidth );
-                    os << row << '\n';
-                }
-            }
-
-            Result Parser::validate() const {
-                for ( auto const& opt : m_options ) {
-                    auto result = opt.validate();
-                    if ( !result )
-                        return result;
-                }
-                for ( auto const& arg : m_args ) {
-                    auto result = arg.validate();
-                    if ( !result )
-                        return result;
-                }
-                return Result::ok();
-            }
-
-            InternalParseResult
-            Parser::parse( std::string const& exeName,
-                           TokenStream const& tokens ) const {
-
-                struct ParserInfo {
-                    ParserBase const* parser = nullptr;
-                    size_t count = 0;
-                };
-                std::vector<ParserInfo> parseInfos;
-                parseInfos.reserve( m_options.size() + m_args.size() );
-                for ( auto const& opt : m_options ) {
-                    parseInfos.push_back( { &opt, 0 } );
-                }
-                for ( auto const& arg : m_args ) {
-                    parseInfos.push_back( { &arg, 0 } );
-                }
-
-                m_exeName.set( exeName );
-
-                auto result = InternalParseResult::ok(
-                    ParseState( ParseResultType::NoMatch, tokens ) );
-                while ( result.value().remainingTokens() ) {
-                    bool tokenParsed = false;
-
-                    for ( auto& parseInfo : parseInfos ) {
-                        if ( parseInfo.parser->cardinality() == 0 ||
-                             parseInfo.count <
-                                 parseInfo.parser->cardinality() ) {
-                            result = parseInfo.parser->parse(
-                                exeName, result.value().remainingTokens() );
-                            if ( !result )
-                                return result;
-                            if ( result.value().type() !=
-                                 ParseResultType::NoMatch ) {
-                                tokenParsed = true;
-                                ++parseInfo.count;
-                                break;
-                            }
-                        }
-                    }
-
-                    if ( result.value().type() ==
-                         ParseResultType::ShortCircuitAll )
-                        return result;
-                    if ( !tokenParsed )
-                        return InternalParseResult::runtimeError(
-                            "Unrecognised token: " +
-                            result.value().remainingTokens()->token );
-                }
-                // !TBD Check missing required options
-                return result;
-            }
-
             InternalParseResult ParserBase::parse( Args const& args ) const {
                 return parse( args.exeName(), TokenStream( args ) );
             }
@@ -411,6 +283,138 @@ namespace Catch {
             }
 
         } // namespace detail
+
+        Parser& Parser::operator|=(Parser const& other) {
+            m_options.insert(m_options.end(),
+                             other.m_options.begin(),
+                             other.m_options.end());
+            m_args.insert(
+                m_args.end(), other.m_args.begin(), other.m_args.end());
+            return *this;
+        }
+
+        std::vector<Detail::HelpColumns> Parser::getHelpColumns() const {
+            std::vector<Detail::HelpColumns> cols;
+            for (auto const& o : m_options) {
+                auto childCols = o.getHelpColumns();
+                cols.insert(
+                    cols.end(), childCols.begin(), childCols.end());
+            }
+            return cols;
+        }
+
+        void Parser::writeToStream(std::ostream& os) const {
+            if (!m_exeName.name().empty()) {
+                os << "usage:\n"
+                    << "  " << m_exeName.name() << ' ';
+                bool required = true, first = true;
+                for (auto const& arg : m_args) {
+                    if (first)
+                        first = false;
+                    else
+                        os << ' ';
+                    if (arg.isOptional() && required) {
+                        os << '[';
+                        required = false;
+                    }
+                    os << '<' << arg.hint() << '>';
+                    if (arg.cardinality() == 0)
+                        os << " ... ";
+                }
+                if (!required)
+                    os << ']';
+                if (!m_options.empty())
+                    os << " options";
+                os << "\n\nwhere options are:\n";
+            }
+
+            auto rows = getHelpColumns();
+            size_t consoleWidth = CATCH_CONFIG_CONSOLE_WIDTH;
+            size_t optWidth = 0;
+            for (auto const& cols : rows)
+                optWidth = (std::max)(optWidth, cols.left.size() + 2);
+
+            optWidth = (std::min)(optWidth, consoleWidth / 2);
+
+            for (auto const& cols : rows) {
+                auto row = TextFlow::Column(cols.left)
+                    .width(optWidth)
+                    .indent(2) +
+                    TextFlow::Spacer(4) +
+                    TextFlow::Column(cols.right)
+                    .width(consoleWidth - 7 - optWidth);
+                os << row << '\n';
+            }
+        }
+
+        Detail::Result Parser::validate() const {
+            for (auto const& opt : m_options) {
+                auto result = opt.validate();
+                if (!result)
+                    return result;
+            }
+            for (auto const& arg : m_args) {
+                auto result = arg.validate();
+                if (!result)
+                    return result;
+            }
+            return Detail::Result::ok();
+        }
+
+        Detail::InternalParseResult
+            Parser::parse(std::string const& exeName,
+                          Detail::TokenStream const& tokens) const {
+
+            struct ParserInfo {
+                ParserBase const* parser = nullptr;
+                size_t count = 0;
+            };
+            std::vector<ParserInfo> parseInfos;
+            parseInfos.reserve(m_options.size() + m_args.size());
+            for (auto const& opt : m_options) {
+                parseInfos.push_back({ &opt, 0 });
+            }
+            for (auto const& arg : m_args) {
+                parseInfos.push_back({ &arg, 0 });
+            }
+
+            m_exeName.set(exeName);
+
+            auto result = Detail::InternalParseResult::ok(
+                Detail::ParseState(ParseResultType::NoMatch, tokens));
+            while (result.value().remainingTokens()) {
+                bool tokenParsed = false;
+
+                for (auto& parseInfo : parseInfos) {
+                    if (parseInfo.parser->cardinality() == 0 ||
+                        parseInfo.count <
+                        parseInfo.parser->cardinality()) {
+                        result = parseInfo.parser->parse(
+                            exeName, result.value().remainingTokens());
+                        if (!result)
+                            return result;
+                        if (result.value().type() !=
+                            ParseResultType::NoMatch) {
+                            tokenParsed = true;
+                            ++parseInfo.count;
+                            break;
+                        }
+                    }
+                }
+
+                if (result.value().type() ==
+                    ParseResultType::ShortCircuitAll)
+                    return result;
+                if (!tokenParsed)
+                    return Detail::InternalParseResult::runtimeError(
+                        "Unrecognised token: " +
+                        result.value().remainingTokens()->token);
+            }
+            // !TBD Check missing required options
+            return result;
+        }
+
+
 
         Help::Help(bool& showHelpFlag) :
             Opt([&](bool flag) {

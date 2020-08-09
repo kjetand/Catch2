@@ -40,6 +40,8 @@
 
 namespace Catch {
     namespace Clara {
+        class Parser;
+
         namespace Detail {
 
             // Traits for extracting arg and return type of lambdas (for single
@@ -422,8 +424,6 @@ namespace Catch {
 
             enum class Optionality { Optional, Required };
 
-            struct Parser;
-
             class ParserBase {
             public:
                 virtual ~ParserBase() = default;
@@ -571,62 +571,56 @@ namespace Catch {
                 Result validate() const override;
             };
 
-            struct Parser : ParserBase {
-
-                mutable ExeName m_exeName;
-                std::vector<Opt> m_options;
-                std::vector<Arg> m_args;
-
-                auto operator|=( ExeName const& exeName ) -> Parser& {
-                    m_exeName = exeName;
-                    return *this;
-                }
-
-                auto operator|=( Arg const& arg ) -> Parser& {
-                    m_args.push_back( arg );
-                    return *this;
-                }
-
-                auto operator|=( Opt const& opt ) -> Parser& {
-                    m_options.push_back( opt );
-                    return *this;
-                }
-
-                Parser& operator|=( Parser const& other );
-
-                template <typename T>
-                auto operator|( T const& other ) const -> Parser {
-                    return Parser( *this ) |= other;
-                }
-
-                std::vector<HelpColumns> getHelpColumns() const;
-
-                void writeToStream( std::ostream& os ) const;
-
-                friend auto operator<<( std::ostream& os, Parser const& parser )
-                    -> std::ostream& {
-                    parser.writeToStream( os );
-                    return os;
-                }
-
-                Result validate() const override;
-
-                using ParserBase::parse;
-                InternalParseResult
-                parse( std::string const& exeName,
-                       TokenStream const& tokens ) const override;
-            };
-
-            template <typename DerivedT>
-            template <typename T>
-            Parser
-            ComposableParserImpl<DerivedT>::operator|( T const& other ) const {
-                return Parser() | static_cast<DerivedT const&>( *this ) | other;
-            }
         } // namespace detail
 
+
         // A Combined parser
-        using Detail::Parser;
+        class Parser : Detail::ParserBase {
+            mutable Detail::ExeName m_exeName;
+            std::vector<Detail::Opt> m_options;
+            std::vector<Detail::Arg> m_args;
+
+        public:
+
+            auto operator|=(Detail::ExeName const& exeName) -> Parser& {
+                m_exeName = exeName;
+                return *this;
+            }
+
+            auto operator|=(Detail::Arg const& arg) -> Parser& {
+                m_args.push_back(arg);
+                return *this;
+            }
+
+            auto operator|=(Detail::Opt const& opt) -> Parser& {
+                m_options.push_back(opt);
+                return *this;
+            }
+
+            Parser& operator|=(Parser const& other);
+
+            template <typename T>
+            auto operator|(T const& other) const -> Parser {
+                return Parser(*this) |= other;
+            }
+
+            std::vector<Detail::HelpColumns> getHelpColumns() const;
+
+            void writeToStream(std::ostream& os) const;
+
+            friend auto operator<<(std::ostream& os, Parser const& parser)
+                -> std::ostream& {
+                parser.writeToStream(os);
+                return os;
+            }
+
+            Detail::Result validate() const override;
+
+            using ParserBase::parse;
+            Detail::InternalParseResult
+                parse(std::string const& exeName,
+                      Detail::TokenStream const& tokens) const override;
+        };
 
         // A parser for options
         using Detail::Opt;
@@ -651,7 +645,16 @@ namespace Catch {
         // Result type for parser operation
         using Detail::ParserResult;
 
-    } // namespace clara
+        namespace Detail {
+            template <typename DerivedT>
+            template <typename T>
+            Parser
+                ComposableParserImpl<DerivedT>::operator|(T const& other) const {
+                return Parser() | static_cast<DerivedT const&>(*this) | other;
+            }
+        }
+
+    } // namespace Clara
 } // namespace Catch
 
 #if defined( __clang__ )
